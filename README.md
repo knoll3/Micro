@@ -1,3 +1,29 @@
+# Micro
+
+A simple implementation of a micro payament system on the ethereum network.
+
+This allows an organization to collect micropayments from any number of subscribers without requiring an on chain transaction for each payment. Use cases include a shopping site where customers pay in small quantities, a game to facilitate in-game micro-transactions, and much more.
+
+# How it works
+
+1. The contract owner deploys a single Micro contract with the MicroToken ERC20 contract.
+2. A subscriber (or customer) deposits tokens into the contract. The subscriber will need to make an on-chain transaction for this.
+3. The subscriber purchases something from the contract owner off-chain.
+4. The subscriber signs a message containing various meta data including the amount that is to be paid and sends it to the owner off-chain.
+5. The owner validates and saves this signature off-chain as well as signatures from other subscribers.
+6. If the subscriber purchases something else, the subscriber signs another message containing the previous amount plus the cost of the item being purchased and sends it to the owner.
+7. The owner discards the previous signatures and keeps the new one (since it is greater in value).
+8. On a periodic basis, the owner claims the payments from the contract by submitting the subscribers' signatures to be verfied by the contract. The owner will need to make an on-chain transaction for this.
+
+## Notes
+
+- All payments are facilitated with the ERC20 MicroToken, but could be modified to just use ETH.
+- When the owner claims payments they only use one signature per subscriber. Naturally they will use the one with the largest amount.
+- Each new signature from a subscriber contains the same nonce which prevents the owner from using multiple signatures from the same subscriber.
+- The owner can and should verify signatures off chain.
+- The transaction fees to claim payments ranges from $1.00 to $5.00 per subscriber in ETH depending on the price of gas and the price of ETH.
+- Protocol fees could be collected on a monthly basis from subscribers to cover the transction costs of claiming payments.
+
 # Advanced Sample Hardhat Project
 
 This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
