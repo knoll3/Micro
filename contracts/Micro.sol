@@ -8,6 +8,7 @@ contract Micro {
     address private owner;
     IERC20 private token;
 
+    mapping(address => bytes32) public subscriberNonces;
     mapping(bytes32 => bool) public usedNonces;
     mapping(address => uint256) public tokenPools;
 
@@ -51,6 +52,14 @@ contract Micro {
 
         // Transfer the token to the contract
         token.transferFrom(msg.sender, address(this), _amount);
+
+        // Initialize a nonce for the sender (subscriber), only if it doesn't
+        // exist. The nonce is any unique bytes32 value. In this case the nonce
+        // is a hash of the sender's address and the current block's timestamp.
+        // The nonce is used to prevent replay attacks.
+        if (subscriberNonces[msg.sender] == 0) {
+            subscriberNonces[msg.sender] = generateNonce(msg.sender);
+        }
 
         emit TokensDeposited(msg.sender, _amount);
 
@@ -127,6 +136,9 @@ contract Micro {
             // Add the nonce to usedNonces
             usedNonces[payment.nonce] = true;
 
+            // Assign the subscriber a new nonce
+            subscriberNonces[payment.sender] = generateNonce(payment.sender);
+
             // Add the amount to the total
             total += payment.amount;
         }
@@ -147,5 +159,13 @@ contract Micro {
             keccak256(
                 abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash)
             );
+    }
+
+    /// @notice Generate a nonnce for the subscriber. This is the hash of an
+    /// account and the current block's timestamp.
+    /// @param _account The subscriber's address
+    /// @return The nonce
+    function generateNonce(address _account) private view returns (bytes32) {
+        return keccak256(abi.encodePacked(_account, block.timestamp));
     }
 }
