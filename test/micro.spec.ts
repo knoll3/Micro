@@ -5,7 +5,6 @@ import { ethers } from "hardhat";
 import { Micro, MicroToken } from "../typechain";
 import { generateRandomNonce, sign } from "./helpers";
 import { MicroPayment } from "../types";
-import { arrayify } from "ethers/lib/utils";
 
 describe("Contract: Micro", function () {
   let signers: SignerWithAddress[];
@@ -69,6 +68,21 @@ describe("Contract: Micro", function () {
       // Check that the token pool for the sender has increased by 100
       const tokenPoolAmount = await micro.tokenPools(payers[0].address);
       expect(tokenPoolAmount).to.equal(amount);
+
+      // Check that the sender is provided a nonce
+      const nonce = await micro.periodNonces(payers[0].address);
+      expect(nonce).to.not.equal(0);
+    });
+
+    it("should not generate a new nonce if the sender already has a nonce", async () => {
+      const amount = BigNumber.from("100");
+      const nonceBefore = await micro.periodNonces(payers[0].address);
+
+      await micro.connect(payers[0]).depositTokens(amount);
+
+      const nonceAfter = await micro.periodNonces(payers[0].address);
+
+      expect(nonceAfter).to.equal(nonceBefore);
     });
 
     it("should emit an event", async () => {
@@ -99,11 +113,12 @@ describe("Contract: Micro", function () {
       const amount = BigNumber.from("5");
 
       for (const signer of signers) {
-        const nonce = await generateRandomNonce(signer.address);
+        // const nonce = await generateRandomNonce(signer.address);
+        const nonce = await micro.periodNonces(signer.address);
 
         const signature = await sign(
           signer,
-          ["address", "uint256", "bytes32", "address"],
+          ["address", "uint256", "uint256", "address"],
           [owner.address, amount, nonce, micro.address]
         );
 
@@ -161,11 +176,11 @@ describe("Contract: Micro", function () {
     it("should revert if sender is not owner", async () => {
       const signer = payers[0];
       const amount = BigNumber.from("5");
-      const nonce = await generateRandomNonce(signer.address);
+      const nonce = await micro.periodNonces(signer.address);
 
       const signature = await sign(
         signer,
-        ["address", "uint256", "bytes32", "address"],
+        ["address", "uint256", "uint256", "address"],
         [owner.address, amount, nonce, micro.address]
       );
 
@@ -184,11 +199,11 @@ describe("Contract: Micro", function () {
     it("should revert if the same signature is provided twice", async () => {
       const signer = payers[0];
       const amount = BigNumber.from("5");
-      const nonce = await generateRandomNonce(signer.address);
+      const nonce = await micro.periodNonces(signer.address);
 
       const signature = await sign(
         signer,
-        ["address", "uint256", "bytes32", "address"],
+        ["address", "uint256", "uint256", "address"],
         [owner.address, amount, nonce, micro.address]
       );
 
@@ -210,17 +225,17 @@ describe("Contract: Micro", function () {
       const signer1 = payers[0];
       const signer2 = payers[1];
 
-      const nonce1 = await generateRandomNonce(signer1.address);
+      const nonce1 = await micro.periodNonces(signer1.address);
       const signature1 = await sign(
         signer1,
-        ["address", "uint256", "bytes32", "address"],
+        ["address", "uint256", "uint256", "address"],
         [owner.address, amount, nonce1, micro.address]
       );
 
       const nonce2 = nonce1;
       const signature2 = await sign(
         signer2,
-        ["address", "uint256", "bytes32", "address"],
+        ["address", "uint256", "uint256", "address"],
         [owner.address, amount, nonce2, micro.address]
       );
 

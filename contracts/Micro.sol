@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract Micro {
     address private owner;
     IERC20 private token;
+    uint256 public latestNonce;
 
-    mapping(address => bytes32) public periodNonces;
-    mapping(address => uint256) public periodTotals;
-    mapping(bytes32 => bool) public usedNonces;
+    mapping(address => uint256) public periodNonces;
+    mapping(uint256 => bool) public usedNonces;
     mapping(address => uint256) public tokenPools;
 
     struct Signature {
@@ -21,7 +21,7 @@ contract Micro {
 
     struct MicroPayment {
         Signature signature;
-        bytes32 nonce;
+        uint256 nonce;
         uint256 amount;
         address sender;
     }
@@ -30,7 +30,7 @@ contract Micro {
     event TokensDeposited(address payer, uint256 amount);
 
     error OnlyOwnerCanClaimPayments(address owner, address sender);
-    error NonceAlreadyUsed(bytes32 nonce);
+    error NonceAlreadyUsed(uint256 nonce);
     error CouldNotVerifyMicroPayment(MicroPayment microPayment);
     error SenderHasInsufficientFunds(
         address payer,
@@ -59,7 +59,7 @@ contract Micro {
         // is a hash of the sender's address and the current block's timestamp.
         // The nonce is used to prevent replay attacks.
         if (periodNonces[msg.sender] == 0) {
-            periodNonces[msg.sender] = generateNonce(msg.sender);
+            periodNonces[msg.sender] = generateNonce();
         }
 
         emit TokensDeposited(msg.sender, _amount);
@@ -139,10 +139,8 @@ contract Micro {
             usedNonces[payment.nonce] = true;
 
             // Assign the subscriber a new nonce for this period
-            periodNonces[payment.sender] = generateNonce(payment.sender);
-
-            // Reset the subscriber's period total
-            periodTotals[payment.sender] = 0;
+            // periodNonces[payment.sender] = generateNonce(payment.sender);
+            periodNonces[payment.sender] = 0;
 
             // Add the amount to the total
             total += payment.amount;
@@ -166,11 +164,10 @@ contract Micro {
             );
     }
 
-    /// @notice Generate a nonnce for the subscriber. This is the hash of an
-    /// account and the current block's timestamp.
-    /// @param _account The subscriber's address
+    /// @notice Generate a nonce for the subscriber and advances the latestNonce.
     /// @return The nonce
-    function generateNonce(address _account) private view returns (bytes32) {
-        return keccak256(abi.encodePacked(_account, block.timestamp));
+    function generateNonce() private returns (uint256) {
+        // Advance the latest nonce by 1 and then return it
+        return ++latestNonce;
     }
 }
